@@ -438,6 +438,8 @@ export const nutritionAPI = {
       console.log("🔍 Making analyze meal API request...");
       console.log("📊 Base64 length:", imageBase64.length);
       console.log("🥗 Edited ingredients count:", editedIngredients.length);
+      console.log("💬 Update text provided:", !!updateText);
+      console.log("🌐 Language:", language);
 
       // Clean base64 - remove data URL prefix if present
       let cleanBase64 = imageBase64;
@@ -454,9 +456,16 @@ export const nutritionAPI = {
         imageBase64: cleanBase64, // Send clean base64 without data URL prefix
         language: language === "he" ? "hebrew" : "english",
         date: new Date().toISOString().split("T")[0],
-        updateText: updateText,
-        editedIngredients: editedIngredients,
+        updateText: updateText || undefined,
+        editedIngredients: editedIngredients.length > 0 ? editedIngredients : undefined,
       };
+
+      console.log("📤 Request data structure:", {
+        imageBase64Length: requestData.imageBase64.length,
+        language: requestData.language,
+        hasUpdateText: !!requestData.updateText,
+        editedIngredientsCount: requestData.editedIngredients?.length || 0,
+      });
 
       // Create a custom timeout for this specific request
       const response = await api.post("/nutrition/analyze", requestData, {
@@ -473,6 +482,7 @@ export const nutritionAPI = {
         "📋 Response Data Keys:",
         Object.keys(response.data.data || {})
       );
+      console.log("📋 Ingredients count:", response.data.data?.ingredients?.length || 0);
       console.log("=====================================");
 
       return response.data;

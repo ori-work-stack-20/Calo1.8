@@ -215,10 +215,7 @@ export const analyzeMeal = createAsyncThunk(
         cleanBase64 = params.imageBase64.split(",")[1];
       }
 
-      // Create data URL for API call
-      const dataUrl = `data:image/jpeg;base64,${cleanBase64}`;
       console.log("Base64 data length:", cleanBase64.length);
-      console.log("Data URL length:", dataUrl.length);
 
       // Make the API call with proper error handling
       const response = await nutritionAPI.analyzeMeal(
@@ -237,6 +234,20 @@ export const analyzeMeal = createAsyncThunk(
         } catch (validationError) {
           console.warn("API response validation failed:", validationError);
           // Continue anyway, but log the issue
+        }
+
+        // Ensure ingredients array is properly formatted
+        if (response.data.ingredients && Array.isArray(response.data.ingredients)) {
+          response.data.ingredients = response.data.ingredients.map((ingredient: any) => ({
+            name: ingredient.name || "Unknown ingredient",
+            calories: Number(ingredient.calories) || 0,
+            protein: Number(ingredient.protein || ingredient.protein_g) || 0,
+            carbs: Number(ingredient.carbs || ingredient.carbs_g) || 0,
+            fat: Number(ingredient.fat || ingredient.fats_g) || 0,
+            fiber: Number(ingredient.fiber || ingredient.fiber_g) || 0,
+            sugar: Number(ingredient.sugar || ingredient.sugar_g) || 0,
+            sodium_mg: Number(ingredient.sodium_mg || ingredient.sodium) || 0,
+          }));
         }
 
         const pendingMeal: PendingMeal = {

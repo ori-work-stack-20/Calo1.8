@@ -62,7 +62,7 @@ export class NutritionService {
       data.editedIngredients?.length || 0
     );
 
-    // Perform real AI analysis - no fallbacks
+    // Perform AI analysis with proper error handling
     const analysis = await OpenAIService.analyzeMealImage(
       cleanBase64,
       language,
@@ -87,49 +87,51 @@ export class NutritionService {
     // Enhanced ingredient mapping with better error handling
     const ingredients = (analysis.ingredients || []).map(
       (ingredient, index) => {
-        // Handle both string and object ingredients
-        const ingredientData =
-          typeof ingredient === "string"
-            ? {
-                name: ingredient,
-                calories: 0,
-                protein_g: 0,
-                carbs_g: 0,
-                fats_g: 0,
-              }
-            : ingredient;
+        // Ensure ingredient is an object with proper structure
+        if (typeof ingredient === "string") {
+          return {
+            name: ingredient,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            fiber: 0,
+            sugar: 0,
+            sodium_mg: 0,
+          };
+        }
 
         return {
-          name: ingredientData.name || `Item ${index + 1}`,
-          calories: Number(ingredientData.calories || 0),
+          name: ingredient.name || `Item ${index + 1}`,
+          calories: Number(ingredient.calories || 0),
           protein: Number(
-            ingredientData.protein_g || ingredientData.protein || 0
+            ingredient.protein_g || ingredient.protein || 0
           ),
-          carbs: Number(ingredientData.carbs_g || ingredientData.carbs || 0),
-          fat: Number(ingredientData.fats_g || ingredientData.fat || 0),
-          fiber: Number(ingredientData.fiber_g || 0),
-          sugar: Number(ingredientData.sugar_g || 0),
-          sodium_mg: Number(ingredientData.sodium_mg || 0),
-          cholesterol_mg: Number(ingredientData.cholesterol_mg || 0),
-          saturated_fats_g: Number(ingredientData.saturated_fats_g || 0),
+          carbs: Number(ingredient.carbs_g || ingredient.carbs || 0),
+          fat: Number(ingredient.fats_g || ingredient.fat || 0),
+          fiber: Number(ingredient.fiber_g || ingredient.fiber || 0),
+          sugar: Number(ingredient.sugar_g || ingredient.sugar || 0),
+          sodium_mg: Number(ingredient.sodium_mg || ingredient.sodium || 0),
+          cholesterol_mg: Number(ingredient.cholesterol_mg || 0),
+          saturated_fats_g: Number(ingredient.saturated_fats_g || 0),
           polyunsaturated_fats_g: Number(
-            ingredientData.polyunsaturated_fats_g || 0
+            ingredient.polyunsaturated_fats_g || 0
           ),
           monounsaturated_fats_g: Number(
-            ingredientData.monounsaturated_fats_g || 0
+            ingredient.monounsaturated_fats_g || 0
           ),
-          omega_3_g: Number(ingredientData.omega_3_g || 0),
-          omega_6_g: Number(ingredientData.omega_6_g || 0),
-          soluble_fiber_g: Number(ingredientData.soluble_fiber_g || 0),
-          insoluble_fiber_g: Number(ingredientData.insoluble_fiber_g || 0),
-          alcohol_g: Number(ingredientData.alcohol_g || 0),
-          caffeine_mg: Number(ingredientData.caffeine_mg || 0),
-          serving_size_g: Number(ingredientData.serving_size_g || 0),
-          glycemic_index: ingredientData.glycemic_index || null,
-          insulin_index: ingredientData.insulin_index || null,
-          vitamins_json: ingredientData.vitamins_json || {},
-          micronutrients_json: ingredientData.micronutrients_json || {},
-          allergens_json: ingredientData.allergens_json || {},
+          omega_3_g: Number(ingredient.omega_3_g || 0),
+          omega_6_g: Number(ingredient.omega_6_g || 0),
+          soluble_fiber_g: Number(ingredient.soluble_fiber_g || 0),
+          insoluble_fiber_g: Number(ingredient.insoluble_fiber_g || 0),
+          alcohol_g: Number(ingredient.alcohol_g || 0),
+          caffeine_mg: Number(ingredient.caffeine_mg || 0),
+          serving_size_g: Number(ingredient.serving_size_g || 0),
+          glycemic_index: ingredient.glycemic_index || null,
+          insulin_index: ingredient.insulin_index || null,
+          vitamins_json: ingredient.vitamins_json || {},
+          micronutrients_json: ingredient.micronutrients_json || {},
+          allergens_json: ingredient.allergens_json || {},
         };
       }
     );
@@ -140,17 +142,14 @@ export class NutritionService {
       cleanBase64
     );
 
-    // Ensure we always have meaningful data
-    if (mappedMeal.calories === 0 && mappedMeal.protein_g === 0) {
-      console.log("🔧 Enhancing analysis data...");
-      mappedMeal.calories = analysis.calories || 350;
-      mappedMeal.protein_g = analysis.protein || 20;
-      mappedMeal.carbs_g = analysis.carbs || 40;
-      mappedMeal.fats_g = analysis.fat || 15;
-      mappedMeal.fiber_g = analysis.fiber || 8;
-      mappedMeal.sugar_g = analysis.sugar || 12;
-      mappedMeal.sodium_mg = analysis.sodium || 600;
+    // Validate that we have meaningful data
+    if (!mappedMeal.meal_name || mappedMeal.meal_name.trim() === "") {
       mappedMeal.meal_name = analysis.name || "Analyzed Meal";
+    }
+
+    // Ensure minimum nutritional data
+    if (mappedMeal.calories === 0 && ingredients.length === 0) {
+      throw new Error("Analysis failed to identify any nutritional content. Please try a clearer image.");
     }
 
     console.log("✅ Meal analysis completed successfully!");
@@ -160,12 +159,13 @@ export class NutritionService {
       data: {
         ...mappedMeal,
         ingredients,
-        healthScore: Math.max(analysis.confidence || 75, 60).toString(),
+        healthScore: (analysis.confidence || 75).toString(),
         recommendations:
           analysis.healthNotes ||
-          "Successfully analyzed meal - enjoy your nutritious food!",
+          analysis.recommendations ||
+          "Meal analysis completed successfully.",
       },
-      remainingRequests: -1,
+      confidence: analysis.confidence || 75,
     };
   }
 

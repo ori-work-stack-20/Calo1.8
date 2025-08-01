@@ -207,6 +207,10 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
   try {
     console.log("Analyze meal request received");
     console.log("Request body keys:", Object.keys(req.body));
+    console.log("User ID:", req.user.user_id);
+    console.log("Language:", req.body.language);
+    console.log("Has update text:", !!req.body.updateText);
+    console.log("Edited ingredients count:", req.body.editedIngredients?.length || 0);
 
     // Validate request body
     const validationResult = mealAnalysisSchema.safeParse(req.body);
@@ -264,6 +268,7 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
     console.log("Processing meal analysis for user:", req.user.user_id);
     console.log("Image data length:", cleanBase64.length);
     console.log("Edited ingredients:", editedIngredients.length);
+    console.log("Update text:", updateText ? "provided" : "not provided");
 
     // Validate request data
     const analysisSchema = z.object({
@@ -289,7 +294,15 @@ router.post("/analyze", authenticateToken, async (req: AuthRequest, res) => {
       updateText: validatedData.updateText,
       editedIngredients: validatedData.editedIngredients,
     });
-    console.log("nutrition.ts in routes", result);
+    
+    console.log("✅ Analysis completed successfully");
+    console.log("📊 Result summary:", {
+      success: result.success,
+      mealName: result.data?.meal_name,
+      calories: result.data?.calories,
+      ingredientsCount: result.data?.ingredients?.length || 0,
+    });
+    
     console.log("Analysis completed successfully");
     res.json(result);
   } catch (error) {
